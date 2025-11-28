@@ -166,12 +166,12 @@ class _SongDetailPageState extends State<SongDetailPage> {
                     child: Image.network(
                       widget.song['artworkUrl100'],
                       width: double.infinity,
-                      height: 300,
+                      height: 350,
                       fit: BoxFit.cover,
                     ),
                   ),
 
-                  const SizedBox(height: AppSpacing.xlarge * 1.5),
+                  const SizedBox(height: AppSpacing.xlarge),
 
                   /// ================= SONG NAME =================
                   Text(
@@ -204,6 +204,27 @@ class _SongDetailPageState extends State<SongDetailPage> {
 
                   const SizedBox(height: AppSpacing.medium),
 
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      Container(
+                        child: IconButton(
+                          icon: Icon(
+                            isFavorite ? Icons.favorite : Icons.favorite_border,
+                            color: isFavorite
+                                ? AppColors.favorite
+                                : AppColors.secondary,
+                            size: 45,
+                          ),
+                          onPressed: () {
+                            songProvider.toggleFavorite(widget.song);
+                            setState(() {});
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(width: 5),
                   // Slider + time
                   Column(
                     children: [
@@ -302,38 +323,7 @@ class _SongDetailPageState extends State<SongDetailPage> {
                       ),
                     ],
                   ),
-
                   const SizedBox(height: AppSpacing.xlarge * 1.5),
-
-                  /// ================= BUTTONS =================
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      /// ❤ Favorite Button
-                      ElevatedButton.icon(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: isFavorite
-                              ? AppColors.favorite
-                              : AppColors.secondary,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        onPressed: () {
-                          songProvider.toggleFavorite(widget.song);
-                          setState(() {});
-                        },
-                        icon: Icon(
-                          isFavorite ? Icons.favorite : Icons.favorite_border,
-                          color: Colors.white,
-                        ),
-                        label: Text(
-                          isFavorite ? "Remove Favorite" : "Add Favorite",
-                          style: const TextStyle(color: Colors.white),
-                        ),
-                      ),
-                    ],
-                  ),
                 ],
               ),
       ),
