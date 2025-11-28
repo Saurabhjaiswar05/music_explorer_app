@@ -60,15 +60,15 @@ class SongProvider extends ChangeNotifier {
       songs = allSongs.take(itemsPerPage).toList();
     } else {
       songs = allSongs
-          .where((song) =>
-              song['trackName']
-                  .toString()
-                  .toLowerCase()
-                  .contains(query.toLowerCase()) ||
-              song['artistName']
-                  .toString()
-                  .toLowerCase()
-                  .contains(query.toLowerCase()))
+          .where(
+            (song) =>
+                song['trackName'].toString().toLowerCase().contains(
+                  query.toLowerCase(),
+                ) ||
+                song['artistName'].toString().toLowerCase().contains(
+                  query.toLowerCase(),
+                ),
+          )
           .toList();
     }
     notifyListeners();
@@ -83,7 +83,7 @@ class SongProvider extends ChangeNotifier {
     isLoadingMore = true;
     notifyListeners();
 
-    await Future.delayed(const Duration(seconds: 1)); // Simulate loading delay
+    await Future.delayed(const Duration(seconds: 1));
 
     currentPage++;
     int newLimit = currentPage * itemsPerPage;
@@ -130,16 +130,19 @@ class SongProvider extends ChangeNotifier {
   // -------------------------
   Future<void> saveFavoritesToPrefs() async {
     final prefs = await SharedPreferences.getInstance();
-    List<String> favStringList =
-        favoriteSongs.map((song) => jsonEncode(song)).toList();
+    List<String> favStringList = favoriteSongs
+        .map((song) => jsonEncode(song))
+        .toList();
     await prefs.setStringList('favorite_songs', favStringList);
   }
 
   Future<void> loadFavoritesFromPrefs() async {
     final prefs = await SharedPreferences.getInstance();
     final favStringList = prefs.getStringList('favorite_songs') ?? [];
-    favoriteSongs =
-        favStringList.map((song) => jsonDecode(song)).toList().cast<Map<String, dynamic>>();
+    favoriteSongs = favStringList
+        .map((song) => jsonDecode(song))
+        .toList()
+        .cast<Map<String, dynamic>>();
     notifyListeners();
   }
 }

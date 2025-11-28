@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:music_explorer_app/pages/Favorites_page.dart';
 import 'package:music_explorer_app/pages/song_detail_page.dart';
+import 'package:music_explorer_app/provider/theme_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:music_explorer_app/provider/song_provider.dart';
 import 'package:music_explorer_app/theme/app_theme.dart';
-import 'package:shimmer/shimmer.dart'; // ← shimmer added
+import 'package:shimmer/shimmer.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -16,21 +17,17 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   final ScrollController _scrollController = ScrollController();
   final TextEditingController _searchController = TextEditingController();
-  bool isLoadingShimmer = true; // shimmer flag
+  bool isLoadingShimmer = true;
 
   @override
   void initState() {
     super.initState();
-
     final provider = Provider.of<SongProvider>(context, listen: false);
     provider.loadSongs();
 
-    // Keep shimmer visible for 1 second
     Future.delayed(const Duration(seconds: 1), () {
       if (mounted) {
-        setState(() {
-          isLoadingShimmer = false;
-        });
+        setState(() => isLoadingShimmer = false);
       }
     });
 
@@ -42,8 +39,9 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
-  /// Shimmer effect list
   Widget _shimmerList() {
+    final isDark = Provider.of<ThemeProvider>(context).isDarkMode;
+
     return ListView.builder(
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.medium),
       itemCount: 6,
@@ -51,15 +49,17 @@ class _HomePageState extends State<HomePage> {
         return Container(
           margin: const EdgeInsets.symmetric(vertical: AppSpacing.small),
           child: Shimmer.fromColors(
-            baseColor: Colors.grey.shade300,
-            highlightColor: Colors.grey.shade100,
+            baseColor: isDark ? Colors.grey.shade800 : Colors.grey.shade300,
+            highlightColor: isDark
+                ? Colors.grey.shade700
+                : Colors.grey.shade100,
             child: Row(
               children: [
                 Container(
                   width: 60,
                   height: 60,
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: isDark ? Colors.grey[900] : Colors.white,
                     borderRadius: BorderRadius.circular(10),
                   ),
                 ),
@@ -70,12 +70,16 @@ class _HomePageState extends State<HomePage> {
                     children: [
                       Container(
                         height: 16,
-                        color: Colors.white,
+                        color: isDark ? Colors.grey[900] : Colors.white,
                         margin: const EdgeInsets.only(
                           bottom: AppSpacing.xsmall,
                         ),
                       ),
-                      Container(height: 14, width: 100, color: Colors.white),
+                      Container(
+                        height: 14,
+                        width: 100,
+                        color: isDark ? Colors.grey[900] : Colors.white,
+                      ),
                     ],
                   ),
                 ),
@@ -90,16 +94,28 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     final songProvider = Provider.of<SongProvider>(context);
+    final isDark = Provider.of<ThemeProvider>(context).isDarkMode;
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+
       appBar: AppBar(
-        backgroundColor: AppColors.primary,
-        title: const Text(
+        backgroundColor: isDark ? Colors.black : AppColors.primary,
+        title: Text(
           'Music Explorer App',
-          style: TextStyle(color: AppColors.background),
+          style: TextStyle(color: isDark ? Colors.white : Colors.white),
         ),
         actions: [
+          IconButton(
+            icon: Icon(
+              isDark ? Icons.light_mode : Icons.dark_mode,
+              color: isDark ? Colors.white : Colors.white,
+            ),
+            onPressed: () {
+              Provider.of<ThemeProvider>(context, listen: false).toggleTheme();
+            },
+          ),
+
           IconButton(
             icon: const Icon(Icons.favorite, color: Colors.pinkAccent),
             onPressed: () {
@@ -111,46 +127,49 @@ class _HomePageState extends State<HomePage> {
           ),
         ],
       ),
+
       body: Column(
         children: [
-          // ---------------- SEARCH BAR ----------------
+          // SEARCH BAR
           Padding(
             padding: const EdgeInsets.all(AppSpacing.medium),
             child: TextField(
               controller: _searchController,
-              onChanged: (value) => songProvider.searchSongs(value),
-              style: AppTextStyles.titleMedium.copyWith(fontSize: 16),
+              onChanged: songProvider.searchSongs,
+              style: TextStyle(
+                fontSize: 16,
+                color: isDark ? Colors.white : Colors.black,
+              ),
+
               decoration: InputDecoration(
                 filled: true,
-                fillColor: Colors.white,
+                fillColor: isDark ? Colors.grey[900] : Colors.white,
                 hintText: "Search songs...",
-                hintStyle: AppTextStyles.smallText,
-                prefixIcon: const Icon(Icons.search, color: AppColors.primary),
+                hintStyle: TextStyle(
+                  color: isDark ? Colors.white54 : Colors.black54,
+                ),
+                prefixIcon: Icon(
+                  Icons.search,
+                  color: isDark ? Colors.white : AppColors.primary,
+                ),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(14),
                   borderSide: BorderSide.none,
-                ),
-                contentPadding: const EdgeInsets.symmetric(
-                  vertical: AppSpacing.small,
                 ),
               ),
             ),
           ),
 
-          // ---------------- SONG LIST ----------------
           Expanded(
             child:
                 (isLoadingShimmer ||
                     (songProvider.isLoading && songProvider.songs.isEmpty))
-                ? _shimmerList() // show shimmer
+                ? _shimmerList()
                 : songProvider.isError
                 ? Center(
                     child: Text(
                       songProvider.errorMessage,
-                      style: AppTextStyles.titleMedium.copyWith(
-                        fontSize: 16,
-                        color: AppColors.error,
-                      ),
+                      style: TextStyle(fontSize: 16, color: AppColors.error),
                     ),
                   )
                 : ListView.builder(
@@ -161,11 +180,12 @@ class _HomePageState extends State<HomePage> {
                     itemCount:
                         songProvider.songs.length +
                         (songProvider.isLoadingMore ? 1 : 0),
+
                     itemBuilder: (context, index) {
                       if (index == songProvider.songs.length) {
-                        return const Padding(
-                          padding: EdgeInsets.all(AppSpacing.medium),
-                          child: Center(
+                        return const Center(
+                          child: Padding(
+                            padding: EdgeInsets.all(AppSpacing.medium),
                             child: CircularProgressIndicator(
                               color: AppColors.primary,
                             ),
@@ -180,20 +200,22 @@ class _HomePageState extends State<HomePage> {
                           vertical: AppSpacing.small,
                         ),
                         decoration: BoxDecoration(
-                          color: Colors.white,
+                          color: isDark ? Colors.grey[900] : Colors.white,
                           borderRadius: BorderRadius.circular(14),
                           boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.05),
-                              blurRadius: 6,
-                              offset: const Offset(0, 3),
-                            ),
+                            if (!isDark)
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.05),
+                                blurRadius: 6,
+                                offset: const Offset(0, 3),
+                              ),
                           ],
                         ),
                         child: ListTile(
                           contentPadding: const EdgeInsets.all(
                             AppSpacing.small,
                           ),
+
                           leading: ClipRRect(
                             borderRadius: BorderRadius.circular(10),
                             child: Image.network(
@@ -203,20 +225,28 @@ class _HomePageState extends State<HomePage> {
                               fit: BoxFit.cover,
                             ),
                           ),
+
                           title: Text(
                             song['trackName'],
-                            style: AppTextStyles.titleMedium.copyWith(
+                            style: TextStyle(
                               fontSize: 16,
+                              color: isDark ? Colors.white : Colors.black,
+                              fontWeight: FontWeight.w600,
                             ),
                           ),
+
                           subtitle: Text(
                             song['artistName'],
-                            style: AppTextStyles.smallText,
+                            style: TextStyle(
+                              color: isDark ? Colors.white70 : Colors.black54,
+                            ),
                           ),
-                          trailing: const Icon(
+
+                          trailing: Icon(
                             Icons.chevron_right,
-                            color: AppColors.primary,
+                            color: isDark ? Colors.white : AppColors.primary,
                           ),
+
                           onTap: () {
                             Navigator.push(
                               context,

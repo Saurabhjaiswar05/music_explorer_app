@@ -4,6 +4,7 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:provider/provider.dart';
 import 'package:shimmer/shimmer.dart';
 import '../provider/song_provider.dart';
+import '../provider/theme_provider.dart';
 import '../theme/app_theme.dart';
 
 class SongDetailPage extends StatefulWidget {
@@ -21,18 +22,42 @@ class _SongDetailPageState extends State<SongDetailPage> {
   bool _isPlaying = false;
   Timer? _previewTimer;
   bool isLoadingShimmer = true;
+  Duration _totalDuration = Duration.zero;
+  Duration _currentPosition = Duration.zero;
 
   @override
   void initState() {
     super.initState();
 
-    // Show shimmer for 1 second
-    Future.delayed(const Duration(seconds: 1), () {
+    _audioPlayer.onDurationChanged.listen((duration) {
+      setState(() {
+        _totalDuration = duration;
+      });
+    });
+
+    _audioPlayer.onPositionChanged.listen((position) {
+      setState(() {
+        _currentPosition = position;
+      });
+    });
+
+    _audioPlayer.onPlayerComplete.listen((event) {
+      _audioPlayer.seek(Duration.zero);
+      _audioPlayer.resume();
+      setState(() {
+        _isPlaying = false;
+        _currentPosition = Duration.zero;
+      });
+    });
+
+    Future.delayed(const Duration(seconds: 1), () async {
       if (mounted) {
-        setState(() {
-          isLoadingShimmer = false;
-        });
+        setState(() => isLoadingShimmer = false);
       }
+
+      /// 🚀 AUTO-PLAY SONG AFTER SHIMMER
+      await _audioPlayer.play(UrlSource(widget.song['previewUrl']));
+      setState(() => _isPlaying = true);
     });
   }
 
@@ -43,7 +68,7 @@ class _SongDetailPageState extends State<SongDetailPage> {
     super.dispose();
   }
 
-  /// Play / Pause preview audio (stop after 30 seconds)
+  /// Play / Pause preview audio for 30 seconds
   void _togglePlay() async {
     if (_isPlaying) {
       await _audioPlayer.pause();
@@ -54,21 +79,27 @@ class _SongDetailPageState extends State<SongDetailPage> {
       _previewTimer?.cancel();
       _previewTimer = Timer(const Duration(seconds: 30), () async {
         await _audioPlayer.stop();
-        setState(() {
-          _isPlaying = false;
-        });
+        setState(() => _isPlaying = false);
       });
     }
 
-    setState(() {
-      _isPlaying = !_isPlaying;
-    });
+    setState(() => _isPlaying = !_isPlaying);
   }
 
-  Widget _shimmerContent() {
+  String _formatDuration(Duration duration) {
+    String twoDigits(int n) => n.toString().padLeft(2, '0');
+    final minutes = twoDigits(duration.inMinutes.remainder(60));
+    final seconds = twoDigits(duration.inSeconds.remainder(60));
+    return "$minutes:$seconds";
+  }
+
+  Widget _shimmerContent(BuildContext context) {
+    final isDark = Provider.of<ThemeProvider>(context).isDarkMode;
+
     return Shimmer.fromColors(
-      baseColor: Colors.grey.shade300,
-      highlightColor: Colors.grey.shade100,
+      baseColor: Colors.grey.shade500,
+      highlightColor: Colors.grey.shade500,
+
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
@@ -76,7 +107,7 @@ class _SongDetailPageState extends State<SongDetailPage> {
             width: double.infinity,
             height: 300,
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: isDark ? Colors.black : Colors.white,
               borderRadius: BorderRadius.circular(16),
             ),
           ),
@@ -103,26 +134,33 @@ class _SongDetailPageState extends State<SongDetailPage> {
   @override
   Widget build(BuildContext context) {
     final songProvider = Provider.of<SongProvider>(context);
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    final isDark = themeProvider.isDarkMode;
+
     final isFavorite = songProvider.isFavorite(widget.song);
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: isDark
+          ? const Color.fromARGB(255, 54, 51, 51)
+          : AppColors.backgroundLight,
+
       appBar: AppBar(
+        backgroundColor: isDark ? Colors.black : AppColors.primary,
         title: Text(
           widget.song['trackName'],
-          style: AppTextStyles.titleMedium.copyWith(color: Colors.white),
+          style: const TextStyle(color: Colors.white),
         ),
-        backgroundColor: AppColors.primary,
         iconTheme: const IconThemeData(color: Colors.white),
       ),
+
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(AppSpacing.medium),
         child: isLoadingShimmer
-            ? _shimmerContent()
+            ? _shimmerContent(context)
             : Column(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  /// Album Image
+                  /// ================= ALBUM IMAGE =================
                   ClipRRect(
                     borderRadius: BorderRadius.circular(16),
                     child: Image.network(
@@ -132,89 +170,165 @@ class _SongDetailPageState extends State<SongDetailPage> {
                       fit: BoxFit.cover,
                     ),
                   ),
+
                   const SizedBox(height: AppSpacing.xlarge * 1.5),
 
-                  /// Song Name
+                  /// ================= SONG NAME =================
                   Text(
                     widget.song['trackName'],
                     textAlign: TextAlign.center,
-                    style: AppTextStyles.titleLarge,
+                    style: AppTextStyles.titleLarge.copyWith(
+                      color: isDark ? AppColors.textWhite : AppColors.textDark,
+                    ),
                   ),
+
                   const SizedBox(height: AppSpacing.small),
 
-                  /// Artist Name
+                  /// ================= ARTIST NAME =================
                   Text(
                     widget.song['artistName'],
-                    style: AppTextStyles.subtitle,
+                    style: AppTextStyles.subtitle.copyWith(
+                      color: isDark ? Colors.white70 : AppColors.textLight,
+                    ),
                   ),
+
                   const SizedBox(height: AppSpacing.xsmall),
 
-                  /// Album Name
+                  /// ================= ALBUM NAME =================
                   Text(
                     widget.song['collectionName'],
-                    style: AppTextStyles.smallText,
+                    style: AppTextStyles.smallText.copyWith(
+                      color: isDark ? Colors.white60 : AppColors.textLight,
+                    ),
                   ),
-                  const SizedBox(height: AppSpacing.xlarge * 1.5),
 
-                  /// Buttons Row
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                  const SizedBox(height: AppSpacing.medium),
+
+                  // Slider + time
+                  Column(
                     children: [
-                      /// Play / Pause Preview Button
-                      ElevatedButton.icon(
-                        style: ElevatedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: AppSpacing.small,
-                            vertical: AppSpacing.medium,
-                          ),
-                          backgroundColor: AppColors.primary,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          textStyle: AppTextStyles.buttonText.copyWith(
-                            color: Colors.white,
-                          ),
+                      Slider(
+                        min: 0,
+                        max: _totalDuration.inSeconds.toDouble(),
+                        value: _currentPosition.inSeconds.toDouble().clamp(
+                          0,
+                          _totalDuration.inSeconds.toDouble(),
                         ),
-                        onPressed: _togglePlay,
-                        icon: Icon(
-                          _isPlaying ? Icons.pause : Icons.play_arrow,
-                          color: Colors.white,
+                        onChanged: (value) async {
+                          final position = Duration(seconds: value.toInt());
+                          await _audioPlayer.seek(position);
+                          setState(() {
+                            _currentPosition = position;
+                          });
+                        },
+                        activeColor: AppColors.primary,
+                        inactiveColor: isDark
+                            ? Colors.white38
+                            : Colors.grey[300],
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppSpacing.small,
                         ),
-                        label: Text(
-                          _isPlaying ? 'Pause Preview' : 'Play Preview',
-                          style: const TextStyle(color: Colors.white),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              _formatDuration(_currentPosition),
+                              style: TextStyle(
+                                color: isDark ? Colors.white : Colors.black,
+                              ),
+                            ),
+                            Text(
+                              _formatDuration(_totalDuration),
+                              style: TextStyle(
+                                color: isDark ? Colors.white : Colors.black,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
 
-                      const SizedBox(width: AppSpacing.small),
+                      /// ================= AUDIO CONTROLS (BACK - PLAY - FORWARD) ================
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          // ⏪ BACK 5 SEC
+                          IconButton(
+                            icon: const Icon(Icons.fast_rewind, size: 36),
+                            color: isDark ? Colors.white : Colors.black,
+                            onPressed: () async {
+                              final newPosition =
+                                  _currentPosition - const Duration(seconds: 5);
+                              await _audioPlayer.seek(
+                                newPosition > Duration.zero
+                                    ? newPosition
+                                    : Duration.zero,
+                              );
+                            },
+                          ),
 
-                      /// Favorite Button
+                          const SizedBox(width: 20),
+
+                          // ⏯ PLAY / PAUSE
+                          IconButton(
+                            icon: Icon(
+                              _isPlaying
+                                  ? Icons.pause_circle_filled
+                                  : Icons.play_circle_fill,
+                              size: 55,
+                            ),
+                            color: AppColors.primary,
+                            onPressed: _togglePlay,
+                          ),
+
+                          const SizedBox(width: 20),
+
+                          // ⏩ FORWARD 5 SEC
+                          IconButton(
+                            icon: const Icon(Icons.fast_forward, size: 36),
+                            color: isDark ? Colors.white : Colors.black,
+                            onPressed: () async {
+                              final newPosition =
+                                  _currentPosition + const Duration(seconds: 5);
+                              if (newPosition < _totalDuration) {
+                                await _audioPlayer.seek(newPosition);
+                              } else {
+                                await _audioPlayer.seek(_totalDuration);
+                              }
+                            },
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: AppSpacing.xlarge * 1.5),
+
+                  /// ================= BUTTONS =================
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      /// ❤ Favorite Button
                       ElevatedButton.icon(
                         style: ElevatedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: AppSpacing.small,
-                            vertical: AppSpacing.medium,
-                          ),
                           backgroundColor: isFavorite
                               ? AppColors.favorite
                               : AppColors.secondary,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
-                          textStyle: AppTextStyles.buttonText.copyWith(
-                            color: Colors.white,
-                          ),
                         ),
                         onPressed: () {
                           songProvider.toggleFavorite(widget.song);
-                          setState(() {}); // Refresh UI immediately
+                          setState(() {});
                         },
                         icon: Icon(
                           isFavorite ? Icons.favorite : Icons.favorite_border,
                           color: Colors.white,
                         ),
                         label: Text(
-                          isFavorite ? 'Remove Favorite' : 'Add Favorite',
+                          isFavorite ? "Remove Favorite" : "Add Favorite",
                           style: const TextStyle(color: Colors.white),
                         ),
                       ),
