@@ -213,7 +213,7 @@ class _SongDetailPageState extends State<SongDetailPage> {
                             isFavorite ? Icons.favorite : Icons.favorite_border,
                             color: isFavorite
                                 ? AppColors.favorite
-                                : AppColors.secondary,
+                                : Colors.grey,
                             size: 45,
                           ),
                           onPressed: () {
