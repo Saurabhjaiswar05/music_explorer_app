@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:music_explorer_app/services/songs_api_services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class SongProvider extends ChangeNotifier {
@@ -29,12 +30,17 @@ class SongProvider extends ChangeNotifier {
       isError = false;
       notifyListeners();
 
-      final String response = await rootBundle.loadString('assets/songs.json');
-      final data = json.decode(response);
+      final data = await SongsApiServices().getAllSongs();
+      print(" 🥳 state reponse : ${data}");
 
       if (data == null || data['results'] == null) {
         throw Exception("Invalid JSON format: 'results' not found.");
       }
+
+
+      final sorteddata = data['results'].sort(
+        (a,b)=>  DateTime.parse(a['releaseDate']).compareTo(DateTime.parse(b['releaseDate']))   
+        );
 
       allSongs = List<Map<String, dynamic>>.from(data['results']);
 

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:music_explorer_app/pages/Favorites_page.dart';
 import 'package:music_explorer_app/pages/song_detail_page.dart';
 import 'package:music_explorer_app/provider/theme_provider.dart';
+import 'package:music_explorer_app/services/songs_api_services.dart';
 import 'package:provider/provider.dart';
 import 'package:music_explorer_app/provider/song_provider.dart';
 import 'package:music_explorer_app/theme/app_theme.dart';
@@ -19,11 +20,14 @@ class _HomePageState extends State<HomePage> {
   final TextEditingController _searchController = TextEditingController();
   bool isLoadingShimmer = true;
 
+  List<Map<String, dynamic>> allsongsList = [];
+
   @override
   void initState() {
     super.initState();
     final provider = Provider.of<SongProvider>(context, listen: false);
     provider.loadSongs();
+    // getAllSongs();
 
     Future.delayed(const Duration(seconds: 1), () {
       if (mounted) {
@@ -37,6 +41,18 @@ class _HomePageState extends State<HomePage> {
         provider.loadMoreSongs();
       }
     });
+  }
+
+  Future<void> getAllSongs() async {
+    try {
+      final response = await SongsApiServices().getAllSongs();
+      print("only result : ${response['results']}");
+      setState(() {
+        allsongsList = response['results'];
+      });
+    } catch (e) {
+      print(e);
+    }
   }
 
   Widget _shimmerList() {
@@ -235,11 +251,36 @@ class _HomePageState extends State<HomePage> {
                             ),
                           ),
 
-                          subtitle: Text(
-                            song['artistName'],
-                            style: TextStyle(
-                              color: isDark ? Colors.white70 : Colors.black54,
-                            ),
+                          subtitle: Column(
+                            mainAxisAlignment: MainAxisAlignment.start,
+                            children: [
+                              Text(
+                                song['artistName'],
+                                style: TextStyle(
+                                  color: isDark
+                                      ? Colors.white70
+                                      : Colors.black54,
+                                ),
+                              ),
+
+                              Text(
+                                "Release Date : ${song['releaseDate']}",
+                                style: TextStyle(
+                                  color: isDark
+                                      ? Colors.white70
+                                      : Colors.black54,
+                                ),
+                              ),
+
+                              Text(
+                                "GenreName :${song['primaryGenreName']}",
+                                style: TextStyle(
+                                  color: isDark
+                                      ? Colors.white70
+                                      : Colors.black54,
+                                ),
+                              ),
+                            ],
                           ),
 
                           trailing: Icon(

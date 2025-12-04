@@ -151,6 +151,7 @@ class _SongDetailPageState extends State<SongDetailPage> {
           style: const TextStyle(color: Colors.white),
         ),
         iconTheme: const IconThemeData(color: Colors.white),
+        actions: [],
       ),
 
       body: SingleChildScrollView(
