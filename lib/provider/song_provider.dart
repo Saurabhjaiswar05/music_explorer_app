@@ -37,10 +37,11 @@ class SongProvider extends ChangeNotifier {
         throw Exception("Invalid JSON format: 'results' not found.");
       }
 
-
-      final sorteddata = data['results'].sort(
-        (a,b)=>  DateTime.parse(a['releaseDate']).compareTo(DateTime.parse(b['releaseDate']))   
-        );
+       data['results'].sort(
+        (a, b) => DateTime.parse(
+          a['releaseDate'],
+        ).compareTo(DateTime.parse(b['releaseDate'])),
+      );
 
       allSongs = List<Map<String, dynamic>>.from(data['results']);
 
